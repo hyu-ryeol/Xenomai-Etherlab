@@ -1,0 +1,216 @@
+<h1>Xenomai 3.0.5 + ubuntu 16.04</h1>
+
+<h2>Reference website : <a href="https://rtt-lwr.readthedocs.io/en/latest/rtpc/xenomai3.html">https://rtt-lwr.readthedocs.io/en/latest/rtpc/xenomai3.html</a></h2>
+
+<h2>Get Linux kernal</h2>
+
+<pre><code class="code-highlighted code-bash">wget https://www.kernel.org/pub/linux/kernel/v4.x/linux-4.9.38.tar.gz
+tar xf linux-4.9.38.tar.gz</code></pre>
+
+<h2>Get Xenomai 3.0.5</h2>
+
+<pre><code class="code-highlighted code-bash">wget https://xenomai.org/downloads/xenomai/stable/xenomai-3.0.5.tar.bz2
+tar xf xenomai-3.0.5.tar.bz2</code></pre>
+
+<h2>Apply the Xenomai patch</h2>
+
+<p>Assume you are building a x86-64 kernel (64bits).</p>
+
+<pre><code class="code-highlighted code-bash"><span class="syntax-all syntax-constant">cd</span> linux-4.9.38
+wget https://xenomai.org/downloads/ipipe/v4.x/x86/ipipe-core-4.9.38-x86-4.patch
+../xenomai-3.0.5/scripts/prepare-kernel.sh --arch=x86_64 --ipipe=ipipe-core-4.9.38-x86-4.patch</code></pre>
+
+<h2>Configure the kernal</h2>
+
+<p>Take the actual working config:</p>
+
+<pre><code class="code-highlighted code-bash">yes <span class="syntax-all syntax-string">&quot;&quot;</span> <span class="syntax-all syntax-keyword">|</span> make oldconfig</code></pre>
+
+<p>without GUI:</p>
+
+<pre><code class="code-highlighted code-bash">sudo apt install libncurses5-dev
+make menuconfig</code></pre>
+
+<p>Some guidelines to configure the linux kernel:</p>
+
+<pre><code class="code-highlighted code-bash">Recommended options:
+
+<span class="syntax-all syntax-keyword">*</span> General setup
+  --<span class="syntax-all syntax-keyword">&gt;</span> Local version - append to kernel release: -xenomai-3.0.5
+  --<span class="syntax-all syntax-keyword">&gt;</span> Timers subsystem
+      --<span class="syntax-all syntax-keyword">&gt;</span> High Resolution Timer Support (Enable)
+<span class="syntax-all syntax-keyword">*</span> Xenomai/cobalt
+  --<span class="syntax-all syntax-keyword">&gt;</span> Sizes and static limits
+    --<span class="syntax-all syntax-keyword">&gt;</span> Number of registry slots (512 --<span class="syntax-all syntax-keyword">&gt;</span> 4096)
+    --<span class="syntax-all syntax-keyword">&gt;</span> Size of system heap (Kb) (512 --<span class="syntax-all syntax-keyword">&gt;</span> 4096)
+    --<span class="syntax-all syntax-keyword">&gt;</span> Size of private heap (Kb) (64 --<span class="syntax-all syntax-keyword">&gt;</span> 256)
+    --<span class="syntax-all syntax-keyword">&gt;</span> Size of shared heap (Kb) (64 --<span class="syntax-all syntax-keyword">&gt;</span> 256)
+    --<span class="syntax-all syntax-keyword">&gt;</span> Maximum number of POSIX timers per process (128 --<span class="syntax-all syntax-keyword">&gt;</span> 512)
+  --<span class="syntax-all syntax-keyword">&gt;</span> Drivers
+	--<span class="syntax-all syntax-keyword">&gt;</span> CAN drivers
+		--<span class="syntax-all syntax-keyword">&gt;</span> RT-Socket-CAN, CAN raw socket interface(Enable)
+		--<span class="syntax-all syntax-keyword">&gt;</span> Enable debug output(Enable)
+		--<span class="syntax-all syntax-keyword">&gt;</span> Vertial CAN bus driver(Enable, modules)
+		--<span class="syntax-all syntax-keyword">&gt;</span> Philips SJA1000 CAN controller(Enable, modules)
+			--<span class="syntax-all syntax-keyword">&gt;</span> Standard ISA controllers(Enable, modules)
+			--<span class="syntax-all syntax-keyword">&gt;</span> Memory mapped controllers(Enable, modules)
+			--<span class="syntax-all syntax-keyword">&gt;</span> PEAK PCI Card(Enable, modules)
+			--<span class="syntax-all syntax-keyword">&gt;</span> IXXAT PCI Card(Enable, modules)
+    --<span class="syntax-all syntax-keyword">&gt;</span> RTnet
+        --<span class="syntax-all syntax-keyword">&gt;</span> RTnet, TCP/IP socket interface (Enable)
+            --<span class="syntax-all syntax-keyword">&gt;</span> Drivers
+                --<span class="syntax-all syntax-keyword">&gt;</span> New intel(R) PRO/1000 PCIe (Enable)
+                --<span class="syntax-all syntax-keyword">&gt;</span> Realtek 8169 (Enable)
+                --<span class="syntax-all syntax-keyword">&gt;</span> Loopback (Enable)
+        --<span class="syntax-all syntax-keyword">&gt;</span> Add-Ons
+            --<span class="syntax-all syntax-keyword">&gt;</span> Real-Time Capturing Support (Enable)
+<span class="syntax-all syntax-keyword">*</span> Power management and ACPI options
+  --<span class="syntax-all syntax-keyword">&gt;</span> CPU Frequency scaling
+      --<span class="syntax-all syntax-keyword">&gt;</span> CPU Frequency scaling (Disable)
+  --<span class="syntax-all syntax-keyword">&gt;</span> ACPI (Advanced Configuration and Power Interface) Support
+      --<span class="syntax-all syntax-keyword">&gt;</span> Processor (Disable)
+  --<span class="syntax-all syntax-keyword">&gt;</span> CPU Idle
+      --<span class="syntax-all syntax-keyword">&gt;</span> CPU idle PM support (Disable)
+<span class="syntax-all syntax-keyword">*</span> Pocessor <span class="syntax-all syntax-constant">type</span> and features
+  --<span class="syntax-all syntax-keyword">&gt;</span> Enable maximum number of SMP processors and NUMA nodes (Disable)
+  // Ref <span class="syntax-all syntax-constant">:</span> http://xenomai.org/pipermail/xenomai/2017-September/037718.html
+  --<span class="syntax-all syntax-keyword">&gt;</span> Processor family
+      --<span class="syntax-all syntax-keyword">&gt;</span> Core 2/newer Xeon (<span class="syntax-all syntax-keyword">if</span> <span class="syntax-all syntax-string">&quot;`cat /proc/cpuinfo </span><span class="syntax-all syntax-keyword">|</span><span class="syntax-all syntax-string"> grep family`&quot;</span> returns 6, <span class="syntax-all syntax-constant">set</span> as Generic otherwise)
+  // Xenomai will issue a warning about CONFIG_MIGRATION, disable those <span class="syntax-all syntax-keyword">in</span> this order
+  --<span class="syntax-all syntax-keyword">&gt;</span> Transparent Hugepage Support (Disable)
+  --<span class="syntax-all syntax-keyword">&gt;</span> Allow <span class="syntax-all syntax-keyword">for</span> <span class="syntax-all syntax-parameter">memory</span> compaction (Disable)
+  --<span class="syntax-all syntax-keyword">&gt;</span> Contiguous Memory Allocation (Disable)
+  --<span class="syntax-all syntax-keyword">&gt;</span> Allow <span class="syntax-all syntax-keyword">for</span> <span class="syntax-all syntax-parameter">memory</span> compaction
+    --<span class="syntax-all syntax-keyword">&gt;</span> Page Migration (Disable)
+<span class="syntax-all syntax-keyword">*</span> Device Drivers
+  --<span class="syntax-all syntax-keyword">&gt;</span> Staging drivers
+      --<span class="syntax-all syntax-keyword">&gt;</span> Unisys SPAR driver support
+         --<span class="syntax-all syntax-keyword">&gt;</span> Unisys visorbus driver (Disable)</code></pre>
+
+<h2>Build the real-time kernel</h2>
+
+<pre><code class="code-highlighted code-bash">sudo apt install kernel-package libssl-dev
+sudo CONCURRENCY_LEVEL=<span class="syntax-all syntax-string">$(nproc)</span> make-kpkg --rootcmd fakeroot --initrd kernel_image kernel_headers</code></pre>
+
+<pre><code class="code-highlighted code-bash"><span class="syntax-all syntax-constant">cd</span> ..
+sudo dpkg -i linux-headers-4.9.38-xenomai-3.0.5_4.9.38-xenomai-3.0.5-10.00.Custom_amd64.deb linux-image-4.9.38-xenomai-3.0.5_4.9.38-xenomai-3.0.5-10.00.Custom_amd64.deb</code></pre>
+
+<h2>Allow non-root users</h2>
+
+<pre><code class="code-highlighted code-bash">sudo addgroup xenomai --gid 1234
+sudo addgroup root xenomai
+sudo usermod -a -G xenomai <span class="syntax-all syntax-parameter">$USER</span></code></pre>
+
+<h2>Configure GRUB and reboot</h2>
+
+<p>Editing the grub config:</p>
+
+<pre><code class="code-highlighted code-bash">sudo gedit /etc/default/grub</code></pre>
+
+<pre><code class="code-highlighted code-bash">GRUB_DEFAULT=<span class="syntax-all syntax-string">&quot;Advanced options for Ubuntu&gt;Ubuntu, with Linux 4.9.38-xenomai-3.0.5&quot;</span>
+<span class="syntax-all syntax-comment">#GRUB_DEFAULT=saved
+</span><span class="syntax-all syntax-comment">#GRUB_SAVEDEFAULT=true
+</span><span class="syntax-all syntax-comment"># Comment the following lines
+</span><span class="syntax-all syntax-comment">#GRUB_HIDDEN_TIMEOUT=0
+</span><span class="syntax-all syntax-comment">#GRUB_HIDDEN_TIMEOUT_QUIET=true
+</span>GRUB_TIMEOUT=5
+GRUB_DISTRIBUTOR=<span class="syntax-all syntax-string">`lsb_release -i -s </span><span class="syntax-all syntax-keyword">2&gt;</span><span class="syntax-all syntax-string"> /dev/null </span><span class="syntax-all syntax-keyword">||</span><span class="syntax-all syntax-string"> </span><span class="syntax-all syntax-constant">echo</span><span class="syntax-all syntax-string"> Debian`</span>
+GRUB_CMDLINE_LINUX_DEFAULT=<span class="syntax-all syntax-string">&quot;quiet splash xenomai.allowed_group=1234&quot;</span>
+GRUB_CMDLINE_LINUX=<span class="syntax-all syntax-string">&quot;&quot;</span></code></pre>
+
+<p>If you have an Intel HD Graphics integrated GPU (any type) :</p>
+
+<pre><code class="code-highlighted code-bash">GRUB_CMDLINE_LINUX_DEFAULT=<span class="syntax-all syntax-string">&quot;quiet splash i915.enable_rc6=0 i915.enable_dc=0 noapic xenomai.allowed_group=1234&quot;</span>
+<span class="syntax-all syntax-comment"># This removes powersavings from the graphics, that creates disturbing interruptions.
+</span></code></pre>
+
+<p>If you have an Intel Skylake (2015 processors), you need to add nosmap to fix the latency hang </p>
+
+<pre><code class="code-highlighted code-bash">GRUB_CMDLINE_LINUX_DEFAULT=<span class="syntax-all syntax-string">&quot;quiet splash i915.enable_rc6=0 i915.enable_dc=0 xeno_nucleus.xenomai_gid=1234 nosmap&quot;</span></code></pre>
+
+<p>Update grub and reboot</p>
+
+<pre><code class="code-highlighted code-bash">sudo update-grub
+sudo reboot</code></pre>
+
+<h2>Installing Xenomai 3.0.5 User space libraries</h2>
+
+<p>First, make sure that you are running the cobalt kernel :</p>
+
+<pre><code class="code-highlighted code-bash">uname -a
+<span class="syntax-all syntax-comment"># Should return Linux waro-rt 4.9.38-xenomai-3.0.5 #2 SMP Wed Sep 20 16:00:12 CEST 2017 x86_64 x86_64 x86_64 GNU/Linux
+</span>dmesg <span class="syntax-all syntax-keyword">|</span> grep Xenomai
+<span class="syntax-all syntax-comment"># [    1.417024] [Xenomai] scheduling class idle registered.
+</span><span class="syntax-all syntax-comment"># [    1.417025] [Xenomai] scheduling class rt registered.
+</span><span class="syntax-all syntax-comment"># [    1.417045] [Xenomai] disabling automatic C1E state promotion on Intel processor
+</span><span class="syntax-all syntax-comment"># [    1.417055] [Xenomai] SMI-enabled chipset found, but SMI workaround disabled
+</span><span class="syntax-all syntax-comment"># [    1.417088] I-pipe: head domain Xenomai registered.
+</span><span class="syntax-all syntax-comment"># [    1.417704] [Xenomai] allowing access to group 1234
+</span><span class="syntax-all syntax-comment"># [    1.417726] [Xenomai] Cobalt v3.0.5 (Sisyphus&#39;s Boulder) [DEBUG]
+</span></code></pre>
+
+<pre><code class="code-highlighted code-bash"><span class="syntax-all syntax-constant">cd</span> xenomai-3.0.5
+./configure --with-pic --with-core=cobalt --enable-smp --disable-tls --enable-dlopen-libs --disable-clock-monotonic-raw
+make -j<span class="syntax-all syntax-string">`nproc`</span>
+sudo make install
+<span class="syntax-all syntax-comment"># --disable-clock-monotonic-raw : http://xenomai.org/pipermail/xenomai/2017-September/037695.html
+</span></code></pre>
+
+<p>Update your bashrc</p>
+
+<pre><code class="code-highlighted code-bash"><span class="syntax-all syntax-constant">echo</span> <span class="syntax-all syntax-string">&#39;
+</span><span class="syntax-all syntax-string">### Xenomai
+</span><span class="syntax-all syntax-string">export XENOMAI_ROOT_DIR=/usr/xenomai
+</span><span class="syntax-all syntax-string">export XENOMAI_PATH=/usr/xenomai
+</span><span class="syntax-all syntax-string">export PATH=$PATH:$XENOMAI_PATH/bin:$XENOMAI_PATH/sbin
+</span><span class="syntax-all syntax-string">export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$XENOMAI_PATH/lib/pkgconfig
+</span><span class="syntax-all syntax-string">export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$XENOMAI_PATH/lib
+</span><span class="syntax-all syntax-string">export OROCOS_TARGET=xenomai
+</span><span class="syntax-all syntax-string">&#39;</span> <span class="syntax-all syntax-keyword">&gt;&gt;</span> <span class="syntax-all syntax-keyword">~</span>/.xenomai_rc
+
+<span class="syntax-all syntax-constant">echo</span> <span class="syntax-all syntax-string">&#39;source ~/.xenomai_rc&#39;</span> <span class="syntax-all syntax-keyword">&gt;&gt;</span> <span class="syntax-all syntax-keyword">~</span>/.bashrc
+<span class="syntax-all syntax-constant">source</span> <span class="syntax-all syntax-keyword">~</span>/.bashrc
+
+<span class="syntax-all syntax-constant">cd</span> /etc/ld.so.conf.d/
+<span class="syntax-all syntax-constant">echo</span> <span class="syntax-all syntax-string">&#39;
+</span><span class="syntax-all syntax-string">### Multiarch support
+</span><span class="syntax-all syntax-string">/usr/xenomai/lib
+</span><span class="syntax-all syntax-string">&#39;</span> <span class="syntax-all syntax-keyword">&gt;&gt;</span> xenomai.conf
+sudo ldconfig -v</code></pre>
+
+<h2>Test your installation</h2>
+
+<pre><code class="code-highlighted code-bash"><span class="syntax-all syntax-constant">cd</span> /usr/xenomai/bin
+sudo ./latency</code></pre>
+
+<p>This loop will allow you to monitor a xenomai latency. Here’s the output for an i7 4Ghz :</p>
+
+<pre><code class="code-highlighted code-bash">== Sampling period: 100 us
+== Test mode: periodic user-mode task
+== All results <span class="syntax-all syntax-keyword">in</span> microseconds
+warming up...
+RTT<span class="syntax-all syntax-keyword">|</span>  00:00:01  (periodic user-mode task, 100 us period, priority 99)
+RTH<span class="syntax-all syntax-keyword">|</span>----lat min<span class="syntax-all syntax-keyword">|</span>----lat avg<span class="syntax-all syntax-keyword">|</span>----lat max<span class="syntax-all syntax-keyword">|</span>-overrun<span class="syntax-all syntax-keyword">|</span>---msw<span class="syntax-all syntax-keyword">|</span>---lat best<span class="syntax-all syntax-keyword">|</span>--lat worst
+RTD<span class="syntax-all syntax-keyword">|</span>      0.174<span class="syntax-all syntax-keyword">|</span>      0.464<span class="syntax-all syntax-keyword">|</span>      1.780<span class="syntax-all syntax-keyword">|</span>       0<span class="syntax-all syntax-keyword">|</span>     0<span class="syntax-all syntax-keyword">|</span>      0.174<span class="syntax-all syntax-keyword">|</span>      1.780
+RTD<span class="syntax-all syntax-keyword">|</span>      0.088<span class="syntax-all syntax-keyword">|</span>      0.464<span class="syntax-all syntax-keyword">|</span>      1.357<span class="syntax-all syntax-keyword">|</span>       0<span class="syntax-all syntax-keyword">|</span>     0<span class="syntax-all syntax-keyword">|</span>      0.088<span class="syntax-all syntax-keyword">|</span>      1.780
+RTD<span class="syntax-all syntax-keyword">|</span>      0.336<span class="syntax-all syntax-keyword">|</span>      0.464<span class="syntax-all syntax-keyword">|</span>      1.822<span class="syntax-all syntax-keyword">|</span>       0<span class="syntax-all syntax-keyword">|</span>     0<span class="syntax-all syntax-keyword">|</span>      0.088<span class="syntax-all syntax-keyword">|</span>      1.822
+RTD<span class="syntax-all syntax-keyword">|</span>      0.342<span class="syntax-all syntax-keyword">|</span>      0.464<span class="syntax-all syntax-keyword">|</span>      1.360<span class="syntax-all syntax-keyword">|</span>       0<span class="syntax-all syntax-keyword">|</span>     0<span class="syntax-all syntax-keyword">|</span>      0.088<span class="syntax-all syntax-keyword">|</span>      1.822
+RTD<span class="syntax-all syntax-keyword">|</span>      0.327<span class="syntax-all syntax-keyword">|</span>      0.462<span class="syntax-all syntax-keyword">|</span>      2.297<span class="syntax-all syntax-keyword">|</span>       0<span class="syntax-all syntax-keyword">|</span>     0<span class="syntax-all syntax-keyword">|</span>      0.088<span class="syntax-all syntax-keyword">|</span>      2.297
+RTD<span class="syntax-all syntax-keyword">|</span>      0.347<span class="syntax-all syntax-keyword">|</span>      0.463<span class="syntax-all syntax-keyword">|</span>      1.313<span class="syntax-all syntax-keyword">|</span>       0<span class="syntax-all syntax-keyword">|</span>     0<span class="syntax-all syntax-keyword">|</span>      0.088<span class="syntax-all syntax-keyword">|</span>      2.297
+RTD<span class="syntax-all syntax-keyword">|</span>      0.314<span class="syntax-all syntax-keyword">|</span>      0.464<span class="syntax-all syntax-keyword">|</span>      1.465<span class="syntax-all syntax-keyword">|</span>       0<span class="syntax-all syntax-keyword">|</span>     0<span class="syntax-all syntax-keyword">|</span>      0.088<span class="syntax-all syntax-keyword">|</span>      2.297
+RTD<span class="syntax-all syntax-keyword">|</span>      0.190<span class="syntax-all syntax-keyword">|</span>      0.464<span class="syntax-all syntax-keyword">|</span>      1.311<span class="syntax-all syntax-keyword">|</span>       0<span class="syntax-all syntax-keyword">|</span>     0<span class="syntax-all syntax-keyword">|</span>      0.088<span class="syntax-all syntax-keyword">|</span>      2.297</code></pre>
+
+<h2>Fix negative latency issues</h2>
+
+<p>You need to be in root sudo -s, then you can set values to the latency calibration variable in nanoseconds:</p>
+
+<pre><code class="code-highlighted code-bash">$ <span class="syntax-all syntax-constant">echo</span> 0 <span class="syntax-all syntax-keyword">&gt;</span> /proc/xenomai/latency
+<span class="syntax-all syntax-comment"># Now run the latency test
+</span>
+<span class="syntax-all syntax-comment"># If the minimum latency value is positive,
+</span><span class="syntax-all syntax-comment"># then get the lowest value from the latency test (ex: 0.088 us)
+</span><span class="syntax-all syntax-comment"># and write it to the calibration file ( here you have to write 88 ns) :
+</span>$ <span class="syntax-all syntax-constant">echo</span> my_super_value_in_ns <span class="syntax-all syntax-keyword">&gt;</span> /proc/xenomai/latency</code></pre>
+
+
+

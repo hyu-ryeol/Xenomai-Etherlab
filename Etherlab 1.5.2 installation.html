@@ -1,0 +1,88 @@
+<h1>Etherlab 1.5.2 installation</h1>
+
+<h2>Reference website : <a href="https://github.com/UNIBO-GRABLab/cable_robot/wiki/Installation">https://github.com/UNIBO-GRABLab/cable_robot/wiki/Installation</a></h2>
+
+<p>$$ Recommended network card : Intel PRO/1000 type</p>
+
+<p>To setup an EtherCAT Master application, please open a terminal and follow instructions below. Further information can be found at original source at <a href="https://sourceforge.net/u/uecasm/etherlab-patches/ci/tip/tree/.">https://sourceforge.net/u/uecasm/etherlab-patches/ci/tip/tree/</a>.</p>
+
+<pre><code class="code-highlighted code-bash">sudo -s
+apt install mercurial
+gedit <span class="syntax-all syntax-keyword">~</span>/.hgrc</code></pre>
+
+<p>And add the following lines(any user name and email):</p>
+
+<pre><code class="code-highlighted code-bash">[extensions]
+mq =
+[ui]
+username = Biorobotics <span class="syntax-all syntax-keyword">&lt;</span>somedayif@hanyang.ac.kr<span class="syntax-all syntax-keyword">&gt;</span></code></pre>
+
+<p>Move to the following directory and download the etherlab source files. The recommend etherlab version is <em>33b922ec1871</em> :</p>
+
+<pre><code class="code-highlighted code-bash"><span class="syntax-all syntax-constant">cd</span> /usr/src
+hg clone -u 33b922ec1871 http://hg.code.sf.net/p/etherlabmaster/code etherlab
+hg clone http://hg.code.sf.net/u/uecasm/etherlab-patches etherlab/.hg/patches
+<span class="syntax-all syntax-constant">cd</span> etherlab
+hg qpush -a</code></pre>
+
+<p>At this point we retrieved the source code of EtherCAT master and patched it so that it is compatible with newer kernel version, up to 4.13.13, and the relative network card drivers. </p>
+
+<p>We have now to configure the source code so that it builds according to our needs (among several available configuration, we will use the fully preemptible one with dedicated network devices and drivers, see <a href="https://www.etherlab.org/en/ethercat/index.php">https://www.etherlab.org/en/ethercat/index.php</a> for the details).</p>
+
+<p>In the same terminal, type:</p>
+
+<pre><code class="code-highlighted code-bash">apt install dh-autoreconf
+./bootstrap
+./configure --with-module-dir=/lib/modules/4.9.38-xenomai-3.0.5 --enable-rtdm --with-xenomai-dir=/usr/xenomai --disable-8139too --enable-<span class="syntax-all syntax-string">$(YOUR_PCI_DRIVER)</span> --enable-generic --enable-rtmutex --disable-eoe --prefix=/opt/etherlab</code></pre>
+
+<p>where <code>$(YOUR_PCI_DRIVER)</code> needs to be replaced by your PCI driver. If you do not know which driver is installed on your machine, on a different terminal type <code>lshw -class network</code> and note down the driver name as well as the serial under the group descripted as Ethernet interface.</p>
+
+<p>before build the ethercat, please build the kernel source as follows,</p>
+
+<pre><code class="code-highlighted code-bash"><span class="syntax-all syntax-constant">cd</span> /home/control/Documents/linux-4.9.38
+apt install libelf-dev
+make -j<span class="syntax-all syntax-string">$(nproc)</span></code></pre>
+
+<p>Due to a bug in the patched version of the modules, you need to manually fix an header file in the source code of etherlab. In particular, go back to the original terminal and type:</p>
+
+<pre><code class="code-highlighted code-bash"><span class="syntax-all syntax-constant">cd</span> /usr/src/etherlab
+gedit master/slave.h</code></pre>
+
+<p>And remove lines 286 and 288 (the #ifdef <strong> EOE</strong> commands), save and close the editor. </p>
+
+<p>Now you can proceed to the build step. In the same terminal, type:</p>
+
+<pre><code class="code-highlighted code-bash">make -j<span class="syntax-all syntax-string">$(nproc)</span>
+make modules -j<span class="syntax-all syntax-string">$(nproc)</span>
+make install
+make modules_install</code></pre>
+
+<p>Now the ethercat master is installed in ”<em>/opt/etherlab</em>” and has to be configured at application level. Therefore:</p>
+
+<pre><code class="code-highlighted code-bash"><span class="syntax-all syntax-constant">cd</span> /opt/etherlab/
+mkdir /etc/sysconfig
+cp etc/sysconfig/ethercat /etc/sysconfig/
+ln -s /opt/etherlab/etc/init.d/ethercat /etc/init.d/ethercat
+/usr/lib/insserv/insserv /etc/init.d/ethercat</code></pre>
+
+<p>Open &quot;<code>gedit /etc/sysconfig/ethercat</code>&quot; (for instance with <code>gedit</code>) and edit it with the previously noted information:</p>
+
+<pre><code class="code-highlighted code-bash">gedit /etc/sysconfig/ethercat</code></pre>
+
+<pre><code class="code-highlighted code-bash">MASTER0_DEVICE=<span class="syntax-all syntax-string">&quot;$(YOUR_PCI_SERIAL)&quot;</span>
+DEVICE_MODULES=<span class="syntax-all syntax-string">&quot;$(YOUR_PCI_DRIVER)&quot;</span></code></pre>
+
+<p>Now we are good to go and we can test if the master can work properly with:</p>
+
+<pre><code class="code-highlighted code-bash">./etc/init.d/ethercat start</code></pre>
+
+<p>You should see the following line printed on the console:</p>
+
+<pre><code class="code-highlighted code-bash">Starting EtherCAT master 1.5.2 <span class="syntax-all syntax-keyword">done</span></code></pre>
+
+<p>Additional command line tools can be installed by creating the following link:</p>
+
+<pre><code class="code-highlighted code-bash">ln -s /opt/etherlab/bin/ethercat /usr/local/bin/ethercat</code></pre>
+
+
+
